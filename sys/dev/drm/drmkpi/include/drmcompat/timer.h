@@ -35,12 +35,12 @@
 struct timer_list {
 	struct callout callout;
 	union {
-		void (*function) (unsigned long);	/* < v4.15 */
+		void (*function) (uintptr_t);	/* < v4.15 */
 		void (*function_415) (struct timer_list *);
 	};
-	unsigned long data;
+	uintptr_t data;
 	int expires;
-};
+} __subobject_use_container_bounds;
 
 int drmcompat_mod_timer(struct timer_list *timer, int expires);
 void drmcompat_add_timer(struct timer_list *timer);

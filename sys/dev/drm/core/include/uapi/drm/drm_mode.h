@@ -238,7 +238,8 @@ struct drm_mode_modeinfo {
 	char name[DRM_DISPLAY_MODE_LEN];
 };
 
-struct drm_mode_card_res {
+#ifdef _KERNEL
+struct drm_mode_card_res64 {
 	__u64 fb_id_ptr;
 	__u64 crtc_id_ptr;
 	__u64 connector_id_ptr;
@@ -252,9 +253,42 @@ struct drm_mode_card_res {
 	__u32 min_height;
 	__u32 max_height;
 };
+#endif
+
+struct drm_mode_card_res {
+	kuintcap_t fb_id_ptr;
+	kuintcap_t crtc_id_ptr;
+	kuintcap_t connector_id_ptr;
+	kuintcap_t encoder_id_ptr;
+	__u32 count_fbs;
+	__u32 count_crtcs;
+	__u32 count_connectors;
+	__u32 count_encoders;
+	__u32 min_width;
+	__u32 max_width;
+	__u32 min_height;
+	__u32 max_height;
+};
+
+#ifdef _KERNEL
+struct drm_mode_crtc64 {
+	__u64 set_connectors_ptr;
+	__u32 count_connectors;
+
+	__u32 crtc_id; /**< Id */
+	__u32 fb_id; /**< Id of framebuffer */
+
+	__u32 x; /**< x Position on the framebuffer */
+	__u32 y; /**< y Position on the framebuffer */
+
+	__u32 gamma_size;
+	__u32 mode_valid;
+	struct drm_mode_modeinfo mode;
+};
+#endif
 
 struct drm_mode_crtc {
-	__u64 set_connectors_ptr;
+	kuintcap_t set_connectors_ptr;
 	__u32 count_connectors;
 
 	__u32 crtc_id; /**< Id */
@@ -291,7 +325,8 @@ struct drm_mode_set_plane {
 	__u32 src_w;
 };
 
-struct drm_mode_get_plane {
+#ifdef _KERNEL
+struct drm_mode_get_plane64 {
 	__u32 plane_id;
 
 	__u32 crtc_id;
@@ -303,9 +338,30 @@ struct drm_mode_get_plane {
 	__u32 count_format_types;
 	__u64 format_type_ptr;
 };
+#endif
+
+struct drm_mode_get_plane {
+	__u32 plane_id;
+
+	__u32 crtc_id;
+	__u32 fb_id;
+
+	__u32 possible_crtcs;
+	__u32 gamma_size;
+
+	__u32 count_format_types;
+	kuintcap_t format_type_ptr;
+};
+
+#ifdef _KERNEL
+struct drm_mode_get_plane_res64 {
+	__u64 plane_id_ptr;
+	__u32 count_planes;
+};
+#endif
 
 struct drm_mode_get_plane_res {
-	__u64 plane_id_ptr;
+	kuintcap_t plane_id_ptr;
 	__u32 count_planes;
 };
 
@@ -363,12 +419,38 @@ enum drm_mode_subconnector {
 #define DRM_MODE_CONNECTOR_WRITEBACK	18
 #define DRM_MODE_CONNECTOR_SPI		19
 
-struct drm_mode_get_connector {
+#ifdef _KERNEL
+struct drm_mode_get_connector64 {
 
 	__u64 encoders_ptr;
 	__u64 modes_ptr;
 	__u64 props_ptr;
 	__u64 prop_values_ptr;
+
+	__u32 count_modes;
+	__u32 count_props;
+	__u32 count_encoders;
+
+	__u32 encoder_id; /**< Current Encoder */
+	__u32 connector_id; /**< Id */
+	__u32 connector_type;
+	__u32 connector_type_id;
+
+	__u32 connection;
+	__u32 mm_width;  /**< width in millimeters */
+	__u32 mm_height; /**< height in millimeters */
+	__u32 subpixel;
+
+	__u32 pad;
+};
+#endif
+
+struct drm_mode_get_connector {
+
+	kuintcap_t encoders_ptr;
+	kuintcap_t modes_ptr;
+	kuintcap_t props_ptr;
+	kuintcap_t prop_values_ptr;
 
 	__u32 count_modes;
 	__u32 count_props;
@@ -421,9 +503,25 @@ struct drm_mode_property_enum {
 	char name[DRM_PROP_NAME_LEN];
 };
 
-struct drm_mode_get_property {
+#ifdef _KERNEL
+struct drm_mode_get_property64 {
 	__u64 values_ptr; /* values and blob lengths */
 	__u64 enum_blob_ptr; /* enum and blob id ptrs */
+
+	__u32 prop_id;
+	__u32 flags;
+	char name[DRM_PROP_NAME_LEN];
+
+	__u32 count_values;
+	/* This is only used to count enum values, not blobs. The _blobs is
+	 * simply because of a historical reason, i.e. backwards compat. */
+	__u32 count_enum_blobs;
+};
+#endif
+
+struct drm_mode_get_property {
+	kuintcap_t values_ptr; /* values and blob lengths */
+	kuintcap_t enum_blob_ptr; /* enum and blob id ptrs */
 
 	__u32 prop_id;
 	__u32 flags;
@@ -451,9 +549,19 @@ struct drm_mode_connector_set_property {
 #define DRM_MODE_OBJECT_PLANE 0xeeeeeeee
 #define DRM_MODE_OBJECT_ANY 0
 
-struct drm_mode_obj_get_properties {
+#ifdef _KERNEL
+struct drm_mode_obj_get_properties64 {
 	__u64 props_ptr;
 	__u64 prop_values_ptr;
+	__u32 count_props;
+	__u32 obj_id;
+	__u32 obj_type;
+};
+#endif
+
+struct drm_mode_obj_get_properties {
+	kuintcap_t props_ptr;
+	kuintcap_t prop_values_ptr;
 	__u32 count_props;
 	__u32 obj_id;
 	__u32 obj_type;
@@ -466,10 +574,18 @@ struct drm_mode_obj_set_property {
 	__u32 obj_type;
 };
 
-struct drm_mode_get_blob {
+#ifdef _KERNEL
+struct drm_mode_get_blob64 {
 	__u32 blob_id;
 	__u32 length;
 	__u64 data;
+};
+#endif
+
+struct drm_mode_get_blob {
+	__u32 blob_id;
+	__u32 length;
+	kuintcap_t data;
 };
 
 struct drm_mode_fb_cmd {
@@ -556,12 +672,22 @@ struct drm_mode_fb_cmd2 {
  * completely with a single color as given in the color argument.
  */
 
-struct drm_mode_fb_dirty_cmd {
+#ifdef _KERNEL
+struct drm_mode_fb_dirty_cmd64 {
 	__u32 fb_id;
 	__u32 flags;
 	__u32 color;
 	__u32 num_clips;
 	__u64 clips_ptr;
+};
+#endif
+
+struct drm_mode_fb_dirty_cmd {
+	__u32 fb_id;
+	__u32 flags;
+	__u32 color;
+	__u32 num_clips;
+	kuintcap_t clips_ptr;
 };
 
 struct drm_mode_mode_cmd {
@@ -611,7 +737,8 @@ struct drm_mode_cursor2 {
 	__s32 hot_y;
 };
 
-struct drm_mode_crtc_lut {
+#ifdef _KERNEL
+struct drm_mode_crtc_lut64 {
 	__u32 crtc_id;
 	__u32 gamma_size;
 
@@ -619,6 +746,17 @@ struct drm_mode_crtc_lut {
 	__u64 red;
 	__u64 green;
 	__u64 blue;
+};
+#endif
+
+struct drm_mode_crtc_lut {
+	__u32 crtc_id;
+	__u32 gamma_size;
+
+	/* pointers to arrays */
+	kuintcap_t red;
+	kuintcap_t green;
+	kuintcap_t blue;
 };
 
 struct drm_color_ctm {
@@ -837,13 +975,26 @@ struct drm_mode_destroy_dumb {
 		DRM_MODE_ATOMIC_NONBLOCK |\
 		DRM_MODE_ATOMIC_ALLOW_MODESET)
 
-struct drm_mode_atomic {
+#ifdef _KERNEL
+struct drm_mode_atomic64 {
 	__u32 flags;
 	__u32 count_objs;
 	__u64 objs_ptr;
 	__u64 count_props_ptr;
 	__u64 props_ptr;
 	__u64 prop_values_ptr;
+	__u64 reserved;
+	__u64 user_data;
+};
+#endif
+
+struct drm_mode_atomic {
+	__u32 flags;
+	__u32 count_objs;
+	kuintcap_t objs_ptr;
+	kuintcap_t count_props_ptr;
+	kuintcap_t props_ptr;
+	kuintcap_t prop_values_ptr;
 	__u64 reserved;
 	__u64 user_data;
 };
@@ -906,9 +1057,20 @@ struct drm_format_modifier {
  * Create a new 'blob' data property, copying length bytes from data pointer,
  * and returning new blob ID.
  */
-struct drm_mode_create_blob {
+#ifdef _KERNEL
+struct drm_mode_create_blob64 {
 	/** Pointer to data to copy. */
 	__u64 data;
+	/** Length of data to copy. */
+	__u32 length;
+	/** Return: new property ID. */
+	__u32 blob_id;
+};
+#endif
+
+struct drm_mode_create_blob {
+	/** Pointer to data to copy. */
+	kuintcap_t data;
 	/** Length of data to copy. */
 	__u32 length;
 	/** Return: new property ID. */
@@ -954,7 +1116,8 @@ struct drm_mode_create_lease {
  * @lessees_ptr: Pointer to lessess.
  * List lesses from a drm_master
  */
-struct drm_mode_list_lessees {
+#ifdef _KERNEL
+struct drm_mode_list_lessees64 {
 	/** Number of lessees.
 	 * On input, provides length of the array.
 	 * On output, provides total number. No
@@ -970,6 +1133,24 @@ struct drm_mode_list_lessees {
 	 */
 	__u64 lessees_ptr;
 };
+#endif
+
+struct drm_mode_list_lessees {
+	/** Number of lessees.
+	 * On input, provides length of the array.
+	 * On output, provides total number. No
+	 * more than the input number will be written
+	 * back, so two calls can be used to get
+	 * the size and then the data.
+	 */
+	__u32 count_lessees;
+	__u32 pad;
+
+	/** Pointer to lessees.
+	 * pointer to __u64 array of lessee ids
+	 */
+	kuintcap_t lessees_ptr;
+};
 
 /**
  * struct drm_mode_get_lease - Get Lease
@@ -978,7 +1159,8 @@ struct drm_mode_list_lessees {
  * @objects_ptr: Pointer to objects.
  * Get leased objects
  */
-struct drm_mode_get_lease {
+#ifdef _KERNEL
+struct drm_mode_get_lease64 {
 	/** Number of leased objects.
 	 * On input, provides length of the array.
 	 * On output, provides total number. No
@@ -993,6 +1175,24 @@ struct drm_mode_get_lease {
 	 * pointer to __u32 array of object ids
 	 */
 	__u64 objects_ptr;
+};
+#endif
+
+struct drm_mode_get_lease {
+	/** Number of leased objects.
+	 * On input, provides length of the array.
+	 * On output, provides total number. No
+	 * more than the input number will be written
+	 * back, so two calls can be used to get
+	 * the size and then the data.
+	 */
+	__u32 count_objects;
+	__u32 pad;
+
+	/** Pointer to objects.
+	 * pointer to __u32 array of object ids
+	 */
+	kuintcap_t objects_ptr;
 };
 
 /**

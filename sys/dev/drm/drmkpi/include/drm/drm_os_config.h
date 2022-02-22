@@ -6,7 +6,9 @@
 #endif
 
 #define COMPAT_FREEBSD32 1
+#if 0 /* No CHERI support for 32 bit compat code. */
 #define CONFIG_COMPAT 1
+#endif
 
 #define	CONFIG_FB			1
 #define	CONFIG_DRM_FBDEV_EMULATION	1

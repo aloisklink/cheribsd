@@ -137,16 +137,30 @@ struct drm_hw_lock {
  *
  * \sa drmGetVersion().
  */
+#ifdef _KERNEL
+struct drm_version64 {
+	int version_major;	  /**< Major version */
+	int version_minor;	  /**< Minor version */
+	int version_patchlevel;	  /**< Patch level */
+	__kernel_size_t name_len;	  /**< Length of name buffer */
+	uint64_t name;	  /**< Name of driver */
+	__kernel_size_t date_len;	  /**< Length of date buffer */
+	uint64_t date;	  /**< User-space buffer to hold date */
+	__kernel_size_t desc_len;	  /**< Length of desc buffer */
+	uint64_t desc;	  /**< User-space buffer to hold desc */
+};
+#endif
+
 struct drm_version {
 	int version_major;	  /**< Major version */
 	int version_minor;	  /**< Minor version */
 	int version_patchlevel;	  /**< Patch level */
 	__kernel_size_t name_len;	  /**< Length of name buffer */
-	char __user *name;	  /**< Name of driver */
+	char __user * __capability name;	  /**< Name of driver */
 	__kernel_size_t date_len;	  /**< Length of date buffer */
-	char __user *date;	  /**< User-space buffer to hold date */
+	char __user * __capability date;	  /**< User-space buffer to hold date */
 	__kernel_size_t desc_len;	  /**< Length of desc buffer */
-	char __user *desc;	  /**< User-space buffer to hold desc */
+	char __user * __capability desc;	  /**< User-space buffer to hold desc */
 };
 
 /**
@@ -156,12 +170,12 @@ struct drm_version {
  */
 struct drm_unique {
 	__kernel_size_t unique_len;	  /**< Length of unique */
-	char __user *unique;	  /**< Unique name for driver instantiation */
+	char __user * __capability unique;	  /**< Unique name for driver instantiation */
 };
 
 struct drm_list {
 	int count;		  /**< Length of user-space structures */
-	struct drm_version __user *version;
+	struct drm_version __user * __capability version;
 };
 
 struct drm_block {
@@ -356,7 +370,7 @@ struct drm_buf_desc {
  */
 struct drm_buf_info {
 	int count;		/**< Entries in list */
-	struct drm_buf_desc __user *list;
+	struct drm_buf_desc __user * __capability list;
 };
 
 /**
@@ -364,7 +378,7 @@ struct drm_buf_info {
  */
 struct drm_buf_free {
 	int count;
-	int __user *list;
+	int __user * __capability list;
 };
 
 /**
@@ -376,7 +390,7 @@ struct drm_buf_pub {
 	int idx;		       /**< Index into the master buffer list */
 	int total;		       /**< Buffer size */
 	int used;		       /**< Amount of buffer in use (for DMA) */
-	void __user *address;	       /**< Address of buffer */
+	void __user * __capability address;	       /**< Address of buffer */
 };
 
 /**
@@ -385,11 +399,11 @@ struct drm_buf_pub {
 struct drm_buf_map {
 	int count;		/**< Length of the buffer list */
 #ifdef __cplusplus
-	void __user *virt;
+	void __user * __capability virt;
 #else
-	void __user *virtual;		/**< Mmap'd area in user-virtual */
+	void __user * __capability virtual;		/**< Mmap'd area in user-virtual */
 #endif
-	struct drm_buf_pub __user *list;	/**< Buffer information */
+	struct drm_buf_pub __user * __capability list;	/**< Buffer information */
 };
 
 /**
@@ -402,13 +416,13 @@ struct drm_buf_map {
 struct drm_dma {
 	int context;			  /**< Context handle */
 	int send_count;			  /**< Number of buffers to send */
-	int __user *send_indices;	  /**< List of handles to buffers */
-	int __user *send_sizes;		  /**< Lengths of data to send */
+	int __user * __capability send_indices;	  /**< List of handles to buffers */
+	int __user * __capability send_sizes;		  /**< Lengths of data to send */
 	enum drm_dma_flags flags;	  /**< Flags */
 	int request_count;		  /**< Number of buffers requested */
 	int request_size;		  /**< Desired size for buffers */
-	int __user *request_indices;	  /**< Buffer information */
-	int __user *request_sizes;
+	int __user * __capability request_indices;	  /**< Buffer information */
+	int __user * __capability request_sizes;
 	int granted_count;		  /**< Number of buffers granted */
 };
 
@@ -432,7 +446,7 @@ struct drm_ctx {
  */
 struct drm_ctx_res {
 	int count;
-	struct drm_ctx __user *contexts;
+	struct drm_ctx __user * __capability contexts;
 };
 
 /**
@@ -749,7 +763,8 @@ struct drm_syncobj_transfer {
 #define DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL (1 << 0)
 #define DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT (1 << 1)
 #define DRM_SYNCOBJ_WAIT_FLAGS_WAIT_AVAILABLE (1 << 2) /* wait for time point to become available */
-struct drm_syncobj_wait {
+#ifdef _KERNEL
+struct drm_syncobj_wait64 {
 	__u64 handles;
 	/* absolute timeout */
 	__s64 timeout_nsec;
@@ -758,8 +773,20 @@ struct drm_syncobj_wait {
 	__u32 first_signaled; /* only valid when not waiting all */
 	__u32 pad;
 };
+#endif
 
-struct drm_syncobj_timeline_wait {
+struct drm_syncobj_wait {
+	kuintcap_t handles;
+	/* absolute timeout */
+	__s64 timeout_nsec;
+	__u32 count_handles;
+	__u32 flags;
+	__u32 first_signaled; /* only valid when not waiting all */
+	__u32 pad;
+};
+
+#ifdef _KERNEL
+struct drm_syncobj_timeline_wait64 {
 	__u64 handles;
 	/* wait on specific timeline point for every handles*/
 	__u64 points;
@@ -770,22 +797,50 @@ struct drm_syncobj_timeline_wait {
 	__u32 first_signaled; /* only valid when not waiting all */
 	__u32 pad;
 };
+#endif
 
+struct drm_syncobj_timeline_wait {
+	kuintcap_t handles;
+	/* wait on specific timeline point for every handles*/
+	kuintcap_t points;
+	/* absolute timeout */
+	__s64 timeout_nsec;
+	__u32 count_handles;
+	__u32 flags;
+	__u32 first_signaled; /* only valid when not waiting all */
+	__u32 pad;
+};
+
+#ifdef _KERNEL
+struct drm_syncobj_array64 {
+	__u64 handles;
+	__u32 count_handles;
+	__u32 pad;
+};
+#endif
 
 struct drm_syncobj_array {
-	__u64 handles;
+	kuintcap_t handles;
 	__u32 count_handles;
 	__u32 pad;
 };
 
 #define DRM_SYNCOBJ_QUERY_FLAGS_LAST_SUBMITTED (1 << 0) /* last available point on timeline syncobj */
-struct drm_syncobj_timeline_array {
+#ifdef _KERNEL
+struct drm_syncobj_timeline_array64 {
 	__u64 handles;
 	__u64 points;
 	__u32 count_handles;
 	__u32 flags;
 };
+#endif
 
+struct drm_syncobj_timeline_array {
+	kuintcap_t handles;
+	kuintcap_t points;
+	__u32 count_handles;
+	__u32 flags;
+};
 
 /* Query current scanout sequence number */
 struct drm_crtc_get_sequence {

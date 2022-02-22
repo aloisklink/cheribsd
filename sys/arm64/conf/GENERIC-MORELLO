@@ -34,3 +34,21 @@ nooptions 	KDTRACE_HOOKS		# Kernel DTrace hooks
 
 # Doesn't build with Morello LLVM
 nooptions 	PAC
+
+# DRM Support
+options		COMPAT_DRMCOMPAT
+device		drm
+device		komeda_drm
+device		panfrost
+device		tda19988
+device		cdns_i2c
+
+# FDT support needed for DRM
+options		FDT
+options		FDT_DTB_STATIC
+makeoptions	FDT_DTS_FILE=arm/morello-soc.dts
+
+nooptions	NFSCL			# Network Filesystem Client
+nooptions	NFS_ROOT		# NFS usable as /, requires NFSCL
+
+options 	ROOTDEVNAME=\"ufs:/dev/ada0\"

@@ -30,8 +30,8 @@
  * $FreeBSD$
  */
 
-#ifndef __DRMKPI_LINUX_AVERAGE_H__
-#define __DRMKPI_LINUX_AVERAGE_H__
+#ifndef __DRMCOMPAT_LINUX_AVERAGE_H__
+#define __DRMCOMPAT_LINUX_AVERAGE_H__
 
 #include <sys/param.h>
 #include <sys/systm.h>

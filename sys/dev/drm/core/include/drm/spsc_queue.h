@@ -24,10 +24,27 @@
 #ifndef DRM_SCHEDULER_SPSC_QUEUE_H_
 #define DRM_SCHEDULER_SPSC_QUEUE_H_
 
+#if 0
 #include <linux/atomic.h>
+#endif
 #include <linux/preempt.h>
 
 /** SPSC lockless queue */
+
+static inline uintptr_t
+atomic_ptr_cmpxchg(uintptr_t *v, uintptr_t old, uintptr_t new)
+{
+	uintptr_t ret = old;
+
+	for (;;) {
+		if (atomic_fcmpset_ptr(v, &ret, new))
+			break;
+		if (ret != old)
+			break;
+	}
+
+	return (ret);
+}
 
 struct spsc_node {
 
@@ -37,10 +54,10 @@ struct spsc_node {
 
 struct spsc_queue {
 
-	 struct spsc_node *head;
+	struct spsc_node *head;
 
 	/* atomic pointer to struct spsc_node* */
-	atomic_long_t tail;
+	uintptr_t tail;
 
 	atomic_t job_count;
 };
@@ -48,7 +65,7 @@ struct spsc_queue {
 static inline void spsc_queue_init(struct spsc_queue *queue)
 {
 	queue->head = NULL;
-	atomic_long_set(&queue->tail, (long)&queue->head);
+	queue->tail = (uintptr_t)&queue->head;
 	atomic_set(&queue->job_count, 0);
 }
 
@@ -69,8 +86,8 @@ static inline bool spsc_queue_push(struct spsc_queue *queue, struct spsc_node *n
 	node->next = NULL;
 
 	preempt_disable();
-
-	tail = (struct spsc_node **)atomic_long_xchg(&queue->tail, (long)&node->next);
+	tail = (struct spsc_node **)atomic_swap_ptr((uintptr_t *)&queue->tail,
+	    (uintptr_t)&node->next);
 	WRITE_ONCE(*tail, node);
 	atomic_inc(&queue->job_count);
 
@@ -103,9 +120,8 @@ static inline struct spsc_node *spsc_queue_pop(struct spsc_queue *queue)
 
 	if (unlikely(!next)) {
 		/* slowpath for the last element in the queue */
-
-		if (atomic_long_cmpxchg(&queue->tail,
-				(long)&node->next, (long) &queue->head) != (long)&node->next) {
+		if (atomic_ptr_cmpxchg(&queue->tail,
+				(uintptr_t)&node->next, (uintptr_t) &queue->head) != (uintptr_t)&node->next) {
 			/* Updating tail failed wait for new next to appear */
 			do {
 				smp_rmb();

@@ -561,7 +561,7 @@ EXPORT_SYMBOL(drm_release_noglobal);
  * Number of bytes read (always aligned to full events, and can be 0) or a
  * negative error code on failure.
  */
-ssize_t drm_read(struct file *filp, char __user *buffer,
+ssize_t drm_read(struct file *filp, char __user * __capability buffer,
 		 size_t count, loff_t *offset)
 {
 	struct drm_file *file_priv = filp->private_data;

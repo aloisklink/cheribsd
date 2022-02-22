@@ -33,14 +33,19 @@ nooptions 	PERTHREAD_SSP		# Not relevant in purecap
 nodevice	armv8crypto	# No purecap assembly
 
 # DRM Support
-# options		COMPAT_DRMCOMPAT
-# device		drm
-# device		komeda_drm
-# device		panfrost
-# device		tda19988
-# device		cdns_i2c
+options		COMPAT_DRMCOMPAT
+device		drm
+device		komeda_drm
+device		panfrost
+device		tda19988
+device		cdns_i2c
 
 # FDT support needed for DRM
-# options		FDT
-# options		FDT_DTB_STATIC
-# makeoptions	FDT_DTS_FILE=arm/morello-soc.dts
+options		FDT
+options		FDT_DTB_STATIC
+makeoptions	FDT_DTS_FILE=arm/morello-soc.dts
+
+nooptions	NFSCL			# Network Filesystem Client
+nooptions	NFS_ROOT		# NFS usable as /, requires NFSCL
+
+options 	ROOTDEVNAME=\"ufs:/dev/ada0\"

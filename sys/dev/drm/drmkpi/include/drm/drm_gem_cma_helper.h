@@ -41,7 +41,7 @@ struct drm_gem_cma_object {
 	size_t			npages;
 	size_t			size;		/* Rounded to page */
 	vm_page_t 		*m;
-};
+} __subobject_use_container_bounds;
 
 int drm_gem_cma_create(struct drm_device *drm, size_t size,
     struct drm_gem_cma_object **res_bo);
