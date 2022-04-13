@@ -1105,6 +1105,10 @@ int drm_mode_page_flip_ioctl(struct drm_device *dev,
 			     void *data, struct drm_file *file_priv)
 {
 	struct drm_mode_crtc_page_flip_target *page_flip = data;
+#ifdef COMPAT_FREEBSD64
+	struct drm_mode_crtc_page_flip_target64 *page_flip64;
+	struct drm_mode_crtc_page_flip_target local_page_flip;
+#endif
 	struct drm_crtc *crtc;
 	struct drm_plane *plane;
 	struct drm_framebuffer *fb = NULL, *old_fb;
@@ -1115,6 +1119,18 @@ int drm_mode_page_flip_ioctl(struct drm_device *dev,
 
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))
 		return -EOPNOTSUPP;
+
+#ifdef COMPAT_FREEBSD64
+	if (!SV_CURPROC_FLAG(SV_CHERI)) {
+		page_flip64 = (struct drm_mode_crtc_page_flip_target64 *)data;
+		page_flip = &local_page_flip;
+		CP(*page_flip64, *page_flip, crtc_id);
+		CP(*page_flip64, *page_flip, fb_id);
+		CP(*page_flip64, *page_flip, flags);
+		CP(*page_flip64, *page_flip, sequence);
+		CP(*page_flip64, *page_flip, user_data);
+	}
+#endif
 
 	if (page_flip->flags & ~DRM_MODE_PAGE_FLIP_FLAGS)
 		return -EINVAL;

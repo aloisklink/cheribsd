@@ -31,6 +31,11 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#ifdef COMPAT_FREEBSD64
+#include <sys/abi_compat.h>
+#include <sys/sysent.h>
+#endif
+
 #include <linux/anon_inodes.h>
 #include <linux/dma-fence.h>
 #include <linux/file.h>
@@ -603,6 +608,52 @@ ssize_t drm_read(struct file *filp, char __user * __capability buffer,
 				return ret;
 		} else {
 			unsigned length = e->event->length;
+			void *ptr;
+
+			ptr = e->event;
+
+#ifdef COMPAT_FREEBSD64
+			struct drm_event_crtc_sequence64 crtc_seq64;
+			struct drm_event_crtc_sequence *crtc_seq;
+			struct drm_event_vblank64 vbl64;
+			struct drm_event_vblank *vbl;
+
+			if (SV_CURPROC_FLAG(SV_CHERI))
+				goto done;
+
+			switch(e->event->type) {
+			case DRM_EVENT_VBLANK:
+			case DRM_EVENT_FLIP_COMPLETE:
+				vbl = (struct drm_event_vblank *)e->event;
+				CP(*vbl, vbl64, base);
+				CP(*vbl, vbl64, user_data);
+				CP(*vbl, vbl64, tv_sec);
+				CP(*vbl, vbl64, tv_usec);
+				CP(*vbl, vbl64, sequence);
+				CP(*vbl, vbl64, crtc_id);
+				vbl64.base.length =
+				    sizeof(struct drm_event_vblank64);
+				length = vbl64.base.length;
+				ptr = (void *)&vbl64;
+				break;
+
+			case DRM_EVENT_CRTC_SEQUENCE:
+				crtc_seq =
+				    (struct drm_event_crtc_sequence *)e->event;
+				CP(*crtc_seq, crtc_seq64, base);
+				CP(*crtc_seq, crtc_seq64, user_data);
+				CP(*crtc_seq, crtc_seq64, time_ns);
+				CP(*crtc_seq, crtc_seq64, sequence);
+				crtc_seq64.base.length =
+				    sizeof(struct drm_event_crtc_sequence64);
+				length = crtc_seq64.base.length;
+				ptr = (void *)&crtc_seq64;
+				break;
+			default:
+				panic("unknown event %d", e->event->type);
+			};
+done:
+#endif
 
 			if (length > count - ret) {
 put_back_event:
@@ -626,7 +677,7 @@ put_back_event:
 				break;
 			}
 
-			if (copy_to_user(buffer + ret, e->event, length)) {
+			if (copy_to_user(buffer + ret, ptr, length)) {
 				if (ret == 0)
 					ret = -EFAULT;
 				goto put_back_event;

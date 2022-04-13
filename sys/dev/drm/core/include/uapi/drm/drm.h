@@ -506,10 +506,18 @@ enum drm_vblank_seq_type {
 #define _DRM_VBLANK_FLAGS_MASK (_DRM_VBLANK_EVENT | _DRM_VBLANK_SIGNAL | \
 				_DRM_VBLANK_SECONDARY | _DRM_VBLANK_NEXTONMISS)
 
-struct drm_wait_vblank_request {
+#ifdef _KERNEL
+struct drm_wait_vblank_request64 {
 	enum drm_vblank_seq_type type;
 	unsigned int sequence;
 	unsigned long signal;
+};
+#endif
+
+struct drm_wait_vblank_request {
+	enum drm_vblank_seq_type type;
+	unsigned int sequence;
+	kuintcap_t signal;
 };
 
 struct drm_wait_vblank_reply {
@@ -524,6 +532,13 @@ struct drm_wait_vblank_reply {
  *
  * \sa drmWaitVBlank().
  */
+#ifdef _KERNEL
+union drm_wait_vblank64 {
+	struct drm_wait_vblank_request64 request;
+	struct drm_wait_vblank_reply reply;
+};
+#endif
+
 union drm_wait_vblank {
 	struct drm_wait_vblank_request request;
 	struct drm_wait_vblank_reply reply;
@@ -857,11 +872,20 @@ struct drm_crtc_get_sequence {
 #define DRM_CRTC_SEQUENCE_RELATIVE		0x00000001	/* sequence is relative to current */
 #define DRM_CRTC_SEQUENCE_NEXT_ON_MISS		0x00000002	/* Use next sequence if we've missed */
 
-struct drm_crtc_queue_sequence {
+#ifdef _KERNEL
+struct drm_crtc_queue_sequence64 {
 	__u32 crtc_id;
 	__u32 flags;
 	__u64 sequence;		/* on input, target sequence. on output, actual sequence */
 	__u64 user_data;	/* user data passed to event */
+};
+#endif
+
+struct drm_crtc_queue_sequence {
+	__u32 crtc_id;
+	__u32 flags;
+	__u64 sequence;		/* on input, target sequence. on output, actual sequence */
+	kuintcap_t user_data;	/* user data passed to event */
 };
 
 #if defined(__cplusplus)
@@ -1037,9 +1061,20 @@ struct drm_event {
 #define DRM_EVENT_FLIP_COMPLETE 0x02
 #define DRM_EVENT_CRTC_SEQUENCE	0x03
 
-struct drm_event_vblank {
+#ifdef _KERNEL
+struct drm_event_vblank64 {
 	struct drm_event base;
 	__u64 user_data;
+	__u32 tv_sec;
+	__u32 tv_usec;
+	__u32 sequence;
+	__u32 crtc_id; /* 0 on older kernels that do not support this */
+};
+#endif
+
+struct drm_event_vblank {
+	struct drm_event base;
+	kuintcap_t user_data;
 	__u32 tv_sec;
 	__u32 tv_usec;
 	__u32 sequence;
@@ -1049,9 +1084,18 @@ struct drm_event_vblank {
 /* Event delivered at sequence. Time stamp marks when the first pixel
  * of the refresh cycle leaves the display engine for the display
  */
-struct drm_event_crtc_sequence {
+#ifdef _KERNEL
+struct drm_event_crtc_sequence64 {
 	struct drm_event	base;
 	__u64			user_data;
+	__s64			time_ns;
+	__u64			sequence;
+};
+#endif
+
+struct drm_event_crtc_sequence {
+	struct drm_event	base;
+	kuintcap_t		user_data;
 	__s64			time_ns;
 	__u64			sequence;
 };

@@ -926,12 +926,22 @@ struct drm_mode_crtc_page_flip {
  * vertical blank period.
  */
 
-struct drm_mode_crtc_page_flip_target {
+#ifdef _KERNEL
+struct drm_mode_crtc_page_flip_target64 {
 	__u32 crtc_id;
 	__u32 fb_id;
 	__u32 flags;
 	__u32 sequence;
 	__u64 user_data;
+};
+#endif
+
+struct drm_mode_crtc_page_flip_target {
+	__u32 crtc_id;
+	__u32 fb_id;
+	__u32 flags;
+	__u32 sequence;
+	kuintcap_t user_data;
 };
 
 /* create a dumb scanout buffer */
