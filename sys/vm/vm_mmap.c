@@ -763,15 +763,18 @@ kern_mmap(struct thread *td, const struct mmap_req *mrp)
 		 * rights, but also return the maximum rights to be combined
 		 * with maxprot later.
 		 */
+		/* nb: rights we need */
 		cap_rights_init_one(&rights, CAP_MMAP);
 		if (max_prot & PROT_READ)
 			cap_rights_set_one(&rights, CAP_MMAP_R);
 		if ((flags & MAP_SHARED) != 0) {
+#if 0
 			if (max_prot & PROT_WRITE)
 				cap_rights_set_one(&rights, CAP_MMAP_W);
+			if (max_prot & PROT_EXEC)
+				cap_rights_set_one(&rights, CAP_MMAP_X);
+#endif
 		}
-		if (max_prot & PROT_EXEC)
-			cap_rights_set_one(&rights, CAP_MMAP_X);
 		error = fget_mmap(td, fd, &rights, &cap_maxprot, &fp);
 		if (error != 0)
 			goto done;
@@ -780,12 +783,14 @@ kern_mmap(struct thread *td, const struct mmap_req *mrp)
 			error = EINVAL;
 			goto done;
 		}
+#if 0
 		if ((max_prot & cap_maxprot) != max_prot) {
 			SYSERRCAUSE("%s: unable to map file with "
 			    "requested maximum permissions", __func__);
 			error = EINVAL;
 			goto done;
 		}
+#endif
 		if (check_fp_fn != NULL) {
 			error = check_fp_fn(fp, prot, max_prot & cap_maxprot,
 			    flags);
