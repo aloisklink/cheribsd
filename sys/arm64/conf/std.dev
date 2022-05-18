@@ -95,6 +95,7 @@ device		ehci			# EHCI USB interface (USB 2.0)
 device		xhci			# XHCI USB interface (USB 3.0)
 device		usb			# USB Bus (required)
 device		ukbd			# Keyboard
+device		ums			# USB mouse
 device		umass			# Disks/Mass storage - Requires scbus and da
 
 # Sound support
