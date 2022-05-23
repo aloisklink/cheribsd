@@ -36,7 +36,7 @@ nooptions 	KDTRACE_HOOKS		# Kernel DTrace hooks
 nooptions 	PAC
 
 # DRM Support
-options		COMPAT_DRMCOMPAT
+options 	COMPAT_DRMCOMPAT
 device		drm
 device		komeda_drm
 device		panfrost
@@ -50,5 +50,7 @@ makeoptions	FDT_DTS_FILE=arm/morello-soc.dts
 
 nooptions	NFSCL			# Network Filesystem Client
 nooptions	NFS_ROOT		# NFS usable as /, requires NFSCL
+
+options		IOMMU
 
 options 	ROOTDEVNAME=\"ufs:/dev/ada0\"
