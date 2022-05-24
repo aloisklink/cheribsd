@@ -231,9 +231,17 @@ static void
 komeda_crtc_atomic_disable(struct drm_crtc *crtc,
     struct drm_crtc_state *old_state)
 {
+	struct komeda_pipeline *pipeline;
+	struct komeda_drm_softc *sc;
 	uint32_t irqflags;
 
 	dprintf("%s\n", __func__);
+
+	pipeline = container_of(crtc, struct komeda_pipeline, crtc);
+
+	sc = pipeline->sc;
+
+	DPU_WR4(sc, BS_CONTROL, 0);
 
 	/* Disable VBLANK events */
 	drm_crtc_vblank_off(crtc);

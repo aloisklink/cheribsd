@@ -32,7 +32,7 @@
 #include <linux/scatterlist.h>
 
 struct drm_gem_cma_object {
-	struct drm_gem_object	gem_obj;
+	struct drm_gem_object	gem_obj __subobject_use_container_bounds;
 	struct sg_table         *sgt;
 
 	/* mapped memory buffer */
@@ -41,7 +41,9 @@ struct drm_gem_cma_object {
 	size_t			npages;
 	size_t			size;		/* Rounded to page */
 	vm_page_t 		*m;
-} __subobject_use_container_bounds;
+	bool			imported;	/* flag that *m is imported.*/
+	struct iommu_map_entry	*entry;		/* product of iommu_map(). */
+};
 
 int drm_gem_cma_create(struct drm_device *drm, size_t size,
     struct drm_gem_cma_object **res_bo);

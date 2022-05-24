@@ -51,10 +51,14 @@
 #define	 GCU_IRQ_CVAL0		(1 << 0)
 #define	GCU_IRQ_STATUS		0x00AC
 #define	GCU_STATUS		0x00B0
+#define	 STATUS_TCS0		(1 << 8)
+#define	 STATUS_TCS1		(1 << 9)
 #define	GCU_CONTROL		0x00D0
 #define	 CONTROL_MODE_S			0
 #define	 CONTROL_MODE_M			(0x7 << CONTROL_MODE_S)
 #define	 CONTROL_MODE_DO0_ACTIVE	(0x3 << CONTROL_MODE_S)
+#define	 CONTROL_MODE_TBU_DISCONNECT	(0x2 << CONTROL_MODE_S)
+#define	 CONTROL_MODE_TBU_CONNECT	(0x1 << CONTROL_MODE_S)
 #define	GCU_CONFIG_VALID0	0x00D4
 #define	 CONFIG_VALID0_CVAL	(1 << 0)
 #define	GCU_CONFIGURATION_ID0	0x0100
@@ -168,7 +172,12 @@ enum d71_block_type {
 #define	 LPU_IRQ_MASK_ERR	(1 << 11)
 #define	 LPU_IRQ_MASK_IBSY	(1 << 10)
 #define	LPU0_IRQ_STATUS		0x02AC
+#define	 IRQ_STATUS_ERROR	(1 << 11)
 #define	LPU0_STATUS		0x02B0
+#define	 STATUS_ACTIVE		(1 << 31)
+#define	LPU0_TBU_STATUS		0x02B4
+#define	LPU0_TBU_CONTROL	0x02D8
+#define	 TBU_CONTROL_TLBPEN	(1 << 16)
 
 #define	LR_BLOCK_INFO(n)	(0x0400 + 0x200 * (n))
 #define	LR_OUTPUT_ID0(n)	(0x0460 + 0x200 * (n))
@@ -176,6 +185,7 @@ enum d71_block_type {
 #define	 CONTROL_ARCACHE_S	28
 #define	 CONTROL_ARCACHE_AXIC_BUF_CACHE	(0x3 << CONTROL_ARCACHE_S)
 		/* Cacheable and bufferable, but do not allocate */
+#define	 CONTROL_TBU_EN		(1 << 16)
 #define	 CONTROL_EN		(1 << 0)	/* Layer enable */
 #define	LR_FORMAT(n)		(0x04D8 + 0x200 * (n))
 #define	LR_IN_SIZE(n)		(0x04E0 + 0x200 * (n))

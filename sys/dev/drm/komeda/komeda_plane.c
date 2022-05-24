@@ -31,11 +31,14 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD$");
 
+#include "opt_iommu.h"
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/kernel.h>
+#include <sys/memdesc.h>
 #include <sys/module.h>
 #include <sys/eventhandler.h>
 #include <sys/gpio.h>
@@ -75,6 +78,10 @@ __FBSDID("$FreeBSD$");
 #include <dev/drm/komeda/komeda_pipeline.h>
 #include <dev/drm/komeda/komeda_drv.h>
 #include <dev/drm/komeda/komeda_regs.h>
+
+#include <dev/iommu/busdma_iommu.h>
+#include <dev/iommu/iommu.h>
+#include <arm64/iommu/iommu.h>
 
 #define	dprintf(fmt, ...)
 
@@ -158,7 +165,7 @@ komeda_plane_atomic_check(struct drm_plane *plane,
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *crtc_state;
 
-	dprintf("%s\n", __func__);
+	dprintf("%s: %p\n", __func__, plane);
 
 	crtc = state->crtc;
 	if (crtc == NULL)
@@ -174,12 +181,128 @@ komeda_plane_atomic_check(struct drm_plane *plane,
 	    true, true));
 }
 
+static int
+gcu_configure(struct komeda_drm_softc *sc)
+{
+	uint32_t reg;
+	int timeout;
+
+	timeout = 10000;
+
+	DPU_WR4(sc, GCU_CONTROL, CONTROL_MODE_DO0_ACTIVE);
+	do {
+		reg = DPU_RD4(sc, GCU_CONTROL);
+		if ((reg & CONTROL_MODE_M) == CONTROL_MODE_DO0_ACTIVE)
+			break;
+	} while (timeout--);
+
+	if (timeout <= 0) {
+		printf("%s: Failed to set GCU mode\n", __func__);
+		return (-1);
+	}
+
+	DPU_WR4(sc, GCU_CONFIG_VALID0, CONFIG_VALID0_CVAL);
+
+	dprintf("%s: GCU initialized\n", __func__);
+
+	return (0);
+}
+
+#ifdef IOMMU
+static void
+komeda_unmap(struct drm_gem_cma_object *bo)
+{
+	struct iommu_map_entries_tailq entries;
+	struct iommu_domain *iodom;
+
+	if (!bo->entry)
+		return;
+
+	dprintf("%s\n", __func__);
+
+	iodom = bo->entry->domain;
+
+	TAILQ_INIT(&entries);
+	TAILQ_INSERT_TAIL(&entries, bo->entry, dmamap_link);
+	iommu_domain_unload(iodom, &entries, true);
+	bo->entry = NULL;
+}
+
+static int
+komeda_map(struct drm_gem_cma_object *bo, struct komeda_plane *komeda_plane)
+{
+	struct iommu_map_entry *entry;
+	struct iommu_domain *iodom;
+	struct iommu_ctx *ioctx;
+	int offset;
+	int eflags, flags;
+	int error;
+	int size;
+
+	offset = 0;
+	flags = 0;
+	eflags = 0;
+	size = bo->npages * PAGE_SIZE;
+
+	ioctx = komeda_plane->ioctx;
+	iodom = ioctx->domain;
+
+	entry = bo->entry;
+	if (entry)
+		return (0);
+
+	error = iommu_map(iodom, &ioctx->tag->common, size, offset, eflags,
+	    flags, bo->m, &bo->entry);
+
+	return (error);
+}
+#endif
+
 static void
 komeda_plane_atomic_disable(struct drm_plane *plane,
     struct drm_plane_state *old_state)
 {
+	struct komeda_plane *komeda_plane;
+	struct komeda_drm_softc *sc;
+#ifdef IOMMU
+	struct drm_gem_cma_object *bo;
+	struct drm_fb_cma *fb;
+#endif
+	uint32_t reg;
+	int timeout;
+	int id;
 
-	dprintf("%s\n", __func__);
+	komeda_plane = container_of(plane, struct komeda_plane, plane);
+
+	dprintf("%s: %p\n", __func__, plane);
+
+	sc = komeda_plane->sc;
+	id = komeda_plane->id;
+
+	DPU_WR4(sc, LR_CONTROL(id), 0);
+
+	gcu_configure(sc);
+
+	/* Ensure all traffic stopped, otherwise SMMU will fault. */
+
+	timeout = 100000;
+
+	do {
+		reg = DPU_RD4(sc, LPU0_STATUS);
+		if ((reg & STATUS_ACTIVE) == 0)
+			break;
+		DELAY(10);
+	} while (timeout--);
+
+	if (timeout < 0)
+		device_printf(sc->dev, "%s: Failed to stop layer %d.\n",
+		    __func__, id);
+
+#ifdef IOMMU
+	fb = container_of(old_state->fb, struct drm_fb_cma, drm_fb);
+	bo = drm_fb_cma_get_gem_obj(fb, 0);
+	komeda_unmap(bo);
+#endif
 }
 
 void
@@ -228,18 +351,24 @@ void
 dou_intr(struct komeda_drm_softc *sc)
 {
 	struct komeda_pipeline *pipeline;
+	uint32_t mask;
 	uint32_t reg;
 
 	reg = DPU_RD4(sc, DOU0_IRQ_STATUS);
 
 	pipeline = &sc->pipelines[0];	/* TODO */
 
-	if ((reg & DOU_IRQ_PL0) != reg)
+	mask = DOU_IRQ_UND | DOU_IRQ_PL0;
+	if (reg & ~mask)
 		printf("%s: reg %x\n", __func__, reg);
 
 	if (reg & DOU_IRQ_PL0) {
 		atomic_add_32(&pipeline->vbl_counter, 1);
 		drm_crtc_handle_vblank(&pipeline->crtc);
+	}
+
+	if (reg & DOU_IRQ_UND) {
+		printf("%s: DOU underrun\n", __func__);
 	}
 
 	DPU_WR4(sc, DOU0_IRQ_CLEAR, reg);
@@ -253,9 +382,9 @@ gcu_intr(struct komeda_drm_softc *sc)
 
 	reg = DPU_RD4(sc, GCU_IRQ_STATUS);
 
-	mask = GCU_IRQ_CVAL0;
+	mask = GCU_IRQ_CVAL0 | GCU_IRQ_MODE;
 
-	if ((reg & mask) != reg)
+	if (reg & ~mask)
 		printf("%s: reg %x\n", __func__, reg);
 
 	DPU_WR4(sc, GCU_IRQ_CLEAR, reg);
@@ -285,33 +414,6 @@ lpu_intr(struct komeda_drm_softc *sc)
 	DPU_WR4(sc, LPU0_IRQ_CLEAR, reg);
 }
 
-static int
-gcu_configure(struct komeda_drm_softc *sc)
-{
-	uint32_t reg;
-	int timeout;
-
-	timeout = 10000;
-
-	DPU_WR4(sc, GCU_CONTROL, CONTROL_MODE_DO0_ACTIVE);
-	do {
-		reg = DPU_RD4(sc, GCU_CONTROL);
-		if ((reg & CONTROL_MODE_M) == CONTROL_MODE_DO0_ACTIVE)
-			break;
-	} while (timeout--);
-
-	if (timeout <= 0) {
-		printf("%s: Failed to set DO0 active\n", __func__);
-		return (-1);
-	}
-
-	DPU_WR4(sc, GCU_CONFIG_VALID0, CONFIG_VALID0_CVAL);
-
-	dprintf("%s: GCU initialized\n", __func__);
-
-	return (0);
-}
-
 void
 dou_configure(struct komeda_drm_softc *sc, struct drm_display_mode *m)
 {
@@ -329,7 +431,7 @@ dou_configure(struct komeda_drm_softc *sc, struct drm_display_mode *m)
 
 static void
 lpu_configure(struct komeda_drm_softc *sc, struct drm_fb_cma *fb,
-    struct drm_plane_state *state, int id)
+    struct drm_plane_state *state, struct komeda_plane *komeda_plane)
 {
 	const struct drm_format_info *info;
 	struct drm_gem_cma_object *bo;
@@ -337,8 +439,14 @@ lpu_configure(struct komeda_drm_softc *sc, struct drm_fb_cma *fb,
 	dma_addr_t paddr;
 	uint32_t reg;
 	int block_h;
+#ifdef IOMMU
+	int error;
+#endif
 	int fmt;
+	int id;
 	int i;
+
+	id = komeda_plane->id;
 
 	for (i = 0; i < nitems(komeda_plane_formats); i++)
 		if (komeda_plane_formats[i] == state->fb->format->format)
@@ -351,7 +459,16 @@ lpu_configure(struct komeda_drm_softc *sc, struct drm_fb_cma *fb,
 		dprintf("%s: cursor plane\n", __func__);
 
 	bo = drm_fb_cma_get_gem_obj(fb, 0);
-	paddr = bo->pbase + fb->drm_fb.offsets[0];
+#ifdef IOMMU
+	if (sc->tbu_en) {
+		error = komeda_map(bo, komeda_plane);
+		KASSERT(error == 0, ("could not map"));
+		paddr = bo->entry->start;
+	} else
+#endif
+		paddr = bo->pbase;
+
+	paddr += fb->drm_fb.offsets[0];
 	paddr += (state->src.x1 >> 16) * fb->drm_fb.format->cpp[0];
 	paddr += (state->src.y1 >> 16) * fb->drm_fb.pitches[0];
 	dprintf("%s: pbase %lx, paddr %lx\n", __func__, bo->pbase, paddr);
@@ -378,6 +495,10 @@ lpu_configure(struct komeda_drm_softc *sc, struct drm_fb_cma *fb,
 	DPU_WR4(sc, LR_PALPHA(id), D71_PALPHA_DEF_MAP);
 	DPU_WR4(sc, LR_AD_CONTROL(id), 0); /* No modifiers. */
 	reg = CONTROL_EN | CONTROL_ARCACHE_AXIC_BUF_CACHE;
+#ifdef IOMMU
+	if (sc->tbu_en)
+		reg |= CONTROL_TBU_EN;
+#endif
 	DPU_WR4(sc, LR_CONTROL(id), reg);
 }
 
@@ -436,7 +557,7 @@ komeda_plane_atomic_update(struct drm_plane *plane,
 	struct drm_plane_state *state;
 	uint32_t reg;
 
-	dprintf("%s\n", __func__);
+	dprintf("%s: %p\n", __func__, plane);
 
 	state = plane->state;
 	crtc = state->crtc;
@@ -463,7 +584,7 @@ komeda_plane_atomic_update(struct drm_plane *plane,
 					LPU_IRQ_MASK_ERR | LPU_IRQ_MASK_IBSY));
 	DPU_WR4(sc, CU0_CU_IRQ_MASK, CU_IRQ_MASK_OVR | CU_IRQ_MASK_ERR);
 
-	lpu_configure(sc, fb, state, komeda_plane->id);
+	lpu_configure(sc, fb, state, komeda_plane);
 	cu_configure(sc, m, state, komeda_plane->id);
 	gcu_configure(sc);
 
@@ -495,6 +616,7 @@ komeda_plane_create(struct komeda_pipeline *pipeline, struct drm_device *drm)
 {
 	struct komeda_drm_softc *sc;
 	enum drm_plane_type type;
+	struct komeda_plane *plane;
 	int error;
 	int i;
 
@@ -503,17 +625,23 @@ komeda_plane_create(struct komeda_pipeline *pipeline, struct drm_device *drm)
 	dprintf("%s\n", __func__);
 
 	for (i = 0; i < 2; i++) {
+		plane = &pipeline->planes[i];
+		plane->sc = sc;
+		plane->id = i;
+#ifdef IOMMU
+		plane->ioctx = iommu_get_ctx_ofw(sc->dev, plane->id);
+		if (plane->ioctx && sc->tbu_en)
+			device_printf(sc->dev, "IOMMU enabled for plane %d\n",
+			    i);
+#endif
+
 		if (i == 0)
 			type = DRM_PLANE_TYPE_PRIMARY;
 		else
 			type = DRM_PLANE_TYPE_CURSOR;
 
-		pipeline->planes[i].sc = sc;
-		pipeline->planes[i].id = i;
-
 		error = drm_universal_plane_init(drm,
-		    &pipeline->planes[i].plane,
-		    0,
+		    &plane->plane, 0,
 		    &komeda_plane_funcs,
 		    komeda_plane_formats,
 		    nitems(komeda_plane_formats),
@@ -522,8 +650,7 @@ komeda_plane_create(struct komeda_pipeline *pipeline, struct drm_device *drm)
 			device_printf(sc->dev, "Could not init plane.");
 			return (error);
 		}
-		drm_plane_helper_add(&pipeline->planes[i].plane,
-		    &komeda_plane_helper_funcs);
+		drm_plane_helper_add(&plane->plane, &komeda_plane_helper_funcs);
 	}
 
 	return (0);

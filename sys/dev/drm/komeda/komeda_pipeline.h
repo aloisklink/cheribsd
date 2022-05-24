@@ -40,7 +40,7 @@ struct komeda_pipeline {
 	struct komeda_plane		planes[2];
 	struct drm_pending_vblank_event	*event;
 	struct drm_device		*drm;
-	struct drm_crtc			crtc;
+	struct drm_crtc			crtc __subobject_use_container_bounds;
 	struct drm_encoder		encoder;
 	uint32_t			vbl_counter;
 	phandle_t			node;

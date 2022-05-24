@@ -39,7 +39,7 @@ MALLOC_DECLARE(M_KOMEDA);
 
 struct komeda_drm_softc {
 	device_t		dev;
-	struct drm_device	drm_dev;
+	struct drm_device	drm_dev __subobject_use_container_bounds;
 	struct drm_fb_cma	*fb;
 	struct komeda_pipeline	pipelines[KOMEDA_MAX_PIPELINES];
 	struct resource		*res[2];

@@ -4,7 +4,7 @@
 #include <drm/drm_fb_helper.h>
 
 struct drm_fb_cma {
-	struct drm_framebuffer	drm_fb;
+	struct drm_framebuffer	drm_fb __subobject_use_container_bounds;
 	struct drm_fb_helper	fb_helper;
 
 	struct drm_gem_cma_object	**planes;	/* Attached planes */

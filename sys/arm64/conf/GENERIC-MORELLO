@@ -51,6 +51,6 @@ makeoptions	FDT_DTS_FILE=arm/morello-soc.dts
 nooptions	NFSCL			# Network Filesystem Client
 nooptions	NFS_ROOT		# NFS usable as /, requires NFSCL
 
-options		IOMMU
+#options 	IOMMU
 
 options 	ROOTDEVNAME=\"ufs:/dev/ada0\"

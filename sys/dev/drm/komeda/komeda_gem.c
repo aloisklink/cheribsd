@@ -39,7 +39,7 @@ __FBSDID("$FreeBSD$");
 #include <drm/drm_file.h>
 
 #include <dev/drm/komeda/komeda_gem.h>
-#include <linux/dma-buf.h>
+#include <dev/drm/drmkpi/include/linux/dma-buf.h>
 
 MALLOC_DECLARE(M_KOMEDA_GEM);
 
@@ -82,10 +82,20 @@ komeda_gem_prime_import_sg_table(struct drm_device *dev,
 	size = round_page(bo->gem_obj.size);
 	bo->size = round_page(size);
 	bo->sgt = sgt;
+	bo->imported = true;
+	bo->npages = size / PAGE_SIZE;
+	bo->m = malloc(sizeof(vm_page_t) * bo->npages, M_DEVBUF,
+	    M_WAITOK | M_ZERO);
+
+	ret = drm_prime_sg_to_page_addr_arrays(sgt, bo->m, NULL, bo->npages);
+	if (ret) {
+		free(bo->m, M_DEVBUF);
+		return (NULL);
+	}
 
 	/*
-	 * Since we don't have IOMMU, we expect that pages are contiguous.
-	 * So take paddr of the first page.
+	 * base address set for the case when we dont have IOMMU, so pages are
+	 * contiguous. Just take paddr of the first page.
 	 */
 	for_each_sg(sgt->sgl, sg, sgt->nents, count) {
 		page = sg_page(sg);

@@ -174,7 +174,7 @@ drm_gem_cma_fault(struct vm_area_struct *dummy, struct vm_fault *vmf)
 	bo = container_of(gem_obj, struct drm_gem_cma_object, gem_obj);
 	obj = vma->vm_obj;
 
-	if (!bo->m)
+	if (!bo->m || bo->imported)
 		return (VM_FAULT_SIGBUS);
 
 	pidx = OFF_TO_IDX(vmf->address - vma->vm_start);
@@ -264,9 +264,11 @@ drm_gem_cma_free_object(struct drm_gem_object *gem_obj)
 
 	drm_gem_object_release(gem_obj);
 
-	drm_gem_cma_destruct(bo);
-
-	free(bo->m, DRM_MEM_DRIVER);
+	if (!bo->imported) {
+		/* Backed pages of imported objects destroyed by their owner*/
+		drm_gem_cma_destruct(bo);
+		free(bo->m, DRM_MEM_DRIVER);
+	}
 	free(bo, DRM_MEM_DRIVER);
 }
 
