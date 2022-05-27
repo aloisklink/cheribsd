@@ -33,6 +33,8 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD$");
 
+#include "opt_iommu.h"
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
@@ -693,10 +695,13 @@ panfrost_gem_get_pages(struct panfrost_gem_object *bo)
 	bo->pages = m0;
 	bo->npages = npages;
 
+#ifdef IOMMU
 	if (1 == 1)
 		error = panfrost_alloc_pages_iommu(bo);
 	else
+#else
 		error = panfrost_alloc_pages_contig(bo);
+#endif
 
 	if (error)
 		return (error);
