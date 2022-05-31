@@ -61,14 +61,14 @@ int
 drmcompat_copyin(const void * __capability uaddr, void *kaddr, size_t len)
 {
 
-	return (-copyin(uaddr, kaddr, len));
+	return (-copyincap(uaddr, kaddr, len));
 }
 
 int
 drmcompat_copyout(const void *kaddr, void * __capability uaddr, size_t len)
 {
 
-	return (-copyout(kaddr, uaddr, len));
+	return (-copyoutcap(kaddr, uaddr, len));
 }
 
 size_t
