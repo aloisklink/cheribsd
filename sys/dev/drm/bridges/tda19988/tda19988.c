@@ -780,11 +780,10 @@ tda19988_connector_detect(struct drm_connector *connector, bool force)
 {
 	struct tda19988_softc *sc;
 	uint8_t data;
-	int error;
 
 	sc = container_of(connector, struct tda19988_softc, connector);
 
-	error = tda19988_cec_read(sc, TDA_CEC_RXSHPDLEV, &data);
+	tda19988_cec_read(sc, TDA_CEC_RXSHPDLEV, &data);
 	if (data & RXSHPDLEV_HPD)
 		return (connector_status_connected);
 
