@@ -279,6 +279,11 @@ komeda_plane_atomic_disable(struct drm_plane *plane,
 	sc = komeda_plane->sc;
 	id = komeda_plane->id;
 
+	if (id == 0)
+		DPU_WR4(sc, CU0_INPUT0_CONTROL, 0);
+	else
+		DPU_WR4(sc, CU0_INPUT1_CONTROL, 0);
+
 	DPU_WR4(sc, LR_CONTROL(id), 0);
 
 	gcu_configure(sc);
@@ -534,8 +539,6 @@ cu_configure(struct komeda_drm_softc *sc, struct drm_display_mode *m,
 		DPU_WR4(sc, CU0_INPUT0_SIZE, reg);
 		DPU_WR4(sc, CU0_INPUT0_OFFSET, 0);
 		DPU_WR4(sc, CU0_INPUT0_CONTROL, ctrl);
-		/* Disable cursor plane, it will be enabled if needed. */
-		DPU_WR4(sc, CU0_INPUT1_CONTROL, 0);
 	} else {
 		DPU_WR4(sc, CU0_INPUT1_SIZE, reg);
 		reg = dst->x1 << INPUT0_OFFSET_HOFFSET_S;
