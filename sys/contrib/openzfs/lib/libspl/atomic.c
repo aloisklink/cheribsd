@@ -71,11 +71,13 @@ ATOMIC_DEC(ulong, ulong_t)
 		(void) __atomic_add_fetch(target, bits, __ATOMIC_SEQ_CST); \
 	}
 
+#ifndef __CHERI_PURE_CAPABILITY__
 void
 atomic_add_ptr(volatile void *target, ssize_t bits)
 {
 	(void) __atomic_add_fetch((void **)target, bits, __ATOMIC_SEQ_CST);
 }
+#endif
 
 /* BEGIN CSTYLED */
 ATOMIC_ADD(8, uint8_t, int8_t)
@@ -95,11 +97,13 @@ ATOMIC_ADD(long, ulong_t, long)
 		(void) __atomic_sub_fetch(target, bits, __ATOMIC_SEQ_CST); \
 	}
 
+#ifndef __CHERI_PURE_CAPABILITY__
 void
 atomic_sub_ptr(volatile void *target, ssize_t bits)
 {
 	(void) __atomic_sub_fetch((void **)target, bits, __ATOMIC_SEQ_CST);
 }
+#endif
 
 /* BEGIN CSTYLED */
 ATOMIC_SUB(8, uint8_t, int8_t)
@@ -195,11 +199,13 @@ ATOMIC_DEC_NV(ulong, ulong_t)
 		return (__atomic_add_fetch(target, bits, __ATOMIC_SEQ_CST)); \
 	}
 
+#ifndef __CHERI_PURE_CAPABILITY__
 void *
 atomic_add_ptr_nv(volatile void *target, ssize_t bits)
 {
 	return (__atomic_add_fetch((void **)target, bits, __ATOMIC_SEQ_CST));
 }
+#endif
 
 /* BEGIN CSTYLED */
 ATOMIC_ADD_NV(8, uint8_t, int8_t)
@@ -219,11 +225,13 @@ ATOMIC_ADD_NV(long, ulong_t, long)
 		return (__atomic_sub_fetch(target, bits, __ATOMIC_SEQ_CST)); \
 	}
 
+#ifndef __CHERI_PURE_CAPABILITY__
 void *
 atomic_sub_ptr_nv(volatile void *target, ssize_t bits)
 {
 	return (__atomic_sub_fetch((void **)target, bits, __ATOMIC_SEQ_CST));
 }
+#endif
 
 /* BEGIN CSTYLED */
 ATOMIC_SUB_NV(8, uint8_t, int8_t)
