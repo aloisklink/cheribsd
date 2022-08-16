@@ -143,7 +143,7 @@ static int nvlist_add_common(nvlist_t *nvl, const char *name, data_type_t type,
 
 #define	NVP_VALOFF(nvp)	(NV_ALIGN(sizeof (nvpair_t) + (nvp)->nvp_name_sz))
 #define	NVPAIR2I_NVP(nvp) \
-	((i_nvp_t *)((size_t)(nvp) - offsetof(i_nvp_t, nvi_nvp)))
+	((i_nvp_t *)((uintptr_t)(nvp) - offsetof(i_nvp_t, nvi_nvp)))
 
 #ifdef _KERNEL
 static const int nvpair_max_recursion = 20;
@@ -552,7 +552,7 @@ nvlist_init(nvlist_t *nvl, uint32_t nvflag, nvpriv_t *priv)
 {
 	nvl->nvl_version = NV_VERSION;
 	nvl->nvl_nvflag = nvflag & (NV_UNIQUE_NAME|NV_UNIQUE_NAME_TYPE);
-	nvl->nvl_priv = (uint64_t)(uintptr_t)priv;
+	nvl->nvl_priv = (uintptr_t)priv;
 	nvl->nvl_flag = 0;
 	nvl->nvl_pad = 0;
 }
@@ -1107,7 +1107,7 @@ i_get_value_size(data_type_t type, const void *data, uint_t nelem)
 		value_sz = NV_ALIGN(sizeof (nvlist_t));
 		break;
 	case DATA_TYPE_NVLIST_ARRAY:
-		value_sz = (uint64_t)nelem * sizeof (uint64_t) +
+		value_sz = (uint64_t)nelem * sizeof (kuint64cap_t) +
 		    (uint64_t)nelem * NV_ALIGN(sizeof (nvlist_t));
 		break;
 	default:
@@ -1237,7 +1237,7 @@ nvlist_add_common(nvlist_t *nvl, const char *name,
 		nvlist_t **onvlp = (nvlist_t **)data;
 		nvlist_t **nvlp = EMBEDDED_NVL_ARRAY(nvp);
 		nvlist_t *embedded = (nvlist_t *)
-		    ((uintptr_t)nvlp + nelem * sizeof (uint64_t));
+		    ((uintptr_t)nvlp + nelem * sizeof (kuint64cap_t));
 
 		for (i = 0; i < nelem; i++) {
 			if ((err = nvlist_copy_embedded(nvl,
@@ -2537,7 +2537,7 @@ nvs_embedded_nvl_array(nvstream_t *nvs, nvpair_t *nvp, size_t *size)
 		break;
 
 	case NVS_OP_DECODE: {
-		size_t len = nelem * sizeof (uint64_t);
+		size_t len = nelem * sizeof (kuint64cap_t);
 		nvlist_t *embedded = (nvlist_t *)((uintptr_t)nvlp + len);
 
 		memset(nvlp, 0, len);	/* don't trust packed data */
@@ -2915,7 +2915,7 @@ nvpair_native_embedded(nvstream_t *nvs, nvpair_t *nvp)
 		 * to use memset.
 		 */
 		memset((char *)packed + offsetof(nvlist_t, nvl_priv),
-		    0, sizeof (uint64_t));
+		    0, sizeof (kuint64cap_t));
 	}
 
 	return (nvs_embedded(nvs, EMBEDDED_NVL(nvp)));
@@ -2944,7 +2944,7 @@ nvpair_native_embedded_array(nvstream_t *nvs, nvpair_t *nvp)
 			 * so we have to use memset.
 			 */
 			memset((char *)packed + offsetof(nvlist_t, nvl_priv),
-			    0, sizeof (uint64_t));
+			    0, sizeof (kuint64cap_t));
 	}
 
 	return (nvs_embedded_nvl_array(nvs, nvp, NULL));
