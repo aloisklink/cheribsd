@@ -1742,7 +1742,7 @@ zfs_readdir(vnode_t *vp, zfs_uio_t *uio, cred_t *cr, int *eofp,
 	} else {
 		bufsize = bytes_wanted;
 		outbuf = NULL;
-		odp = (struct dirent64 *)iovp->iov_base;
+		odp = (__cheri_fromcap struct dirent64 *)iovp->iov_base;
 	}
 	eodp = (struct edirent *)odp;
 
@@ -5040,7 +5040,7 @@ zfs_freebsd_readlink(struct vop_readlink_args *ap)
 	trycache = false;
 	if (zfs_uio_segflg(&uio) == UIO_SYSSPACE &&
 	    zfs_uio_iovcnt(&uio) == 1) {
-		base = zfs_uio_iovbase(&uio, 0);
+		base = (__cheri_fromcap char *)zfs_uio_iovbase(&uio, 0);
 		symlink_len = zfs_uio_iovlen(&uio, 0);
 		trycache = true;
 	}
@@ -5847,8 +5847,7 @@ zfs_listextattr_dir(struct vop_listextattr_args *ap, const char *attrprefix)
 	size_t plen = strlen(attrprefix);
 
 	do {
-		aiov.iov_base = (void *)dirbuf;
-		aiov.iov_len = sizeof (dirbuf);
+		IOVEC_INIT(&aiov, dirbuf, sizeof (dirbuf));
 		auio.uio_resid = sizeof (dirbuf);
 		error = VOP_READDIR(vp, &auio, ap->a_cred, &eof, NULL, NULL);
 		if (error != 0)
