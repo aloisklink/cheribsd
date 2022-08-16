@@ -62,9 +62,11 @@ SRCS+=	blake3.c \
 	blake3_impl.c \
 	blake3_x86-64.c
 
+.if ${MACHINE_ARCH} == "aarch64"
 #icp/asm-aarch64/blake3
 SRCS+=	b3_aarch64_sse2.S \
 	b3_aarch64_sse41.S
+.endif
 
 #icp/asm-ppc64/blake3
 SRCS+=	b3_ppc64le_sse2.S \
