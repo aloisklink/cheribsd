@@ -130,6 +130,106 @@ CHERIBSDTEST(colocation_coexec_child,
 		}
 	}
 }
+
+/*
+ * colocation_coaccept_slow - test runner coregisters, forks and
+ * coexecs a child, and then calls coaccept.  The child looks up the
+ * parent with colookup and makes a cocall into it.  Both send their
+ * own pid and validate what they recieve after return.
+ */
+static void
+coaccept_slow_cf(const struct cheri_test *ctp)
+{
+	void *target;
+	pid_t my_pid, parent_pid, recvd_pid;
+	int error;
+
+	if (!is_colocated_with_parent())
+		errx(EX_OSERR, "Not colocated with parent");
+
+	my_pid = getpid();
+	parent_pid = getppid();
+
+	error = cosetup(COSETUP_COCALL);
+	if (error != 0)
+		err(EX_OSERR, "cosetup");
+
+	error = colookup(ctp->ct_name, &target);
+	if (error != 0)
+		err(EX_OSERR, "colookup");
+
+	error = cocall_slow(target, &my_pid, sizeof(my_pid), &recvd_pid,
+	    sizeof(recvd_pid));
+	if (error != 0)
+		err(EX_OSERR, "cocall");
+
+	if (recvd_pid != parent_pid) {
+		errx(EX_SOFTWARE, "recvd_pid %d != parent_pid %d", recvd_pid,
+		    parent_pid);
+	}
+
+	exit(0);
+}
+
+CHERIBSDTEST(colocation_coaccept_slow,
+    "Configure the parent to coaccept and recieve one cocall",
+    .ct_child_func = coaccept_slow_cf)
+{
+	pid_t caller_pid, fork_pid, my_pid, recvd_pid;
+	int error;
+
+	if (is_colocated_with_parent())
+		cheribsdtest_failure_errx(
+		    "test runner colocated with main " PROG "process");
+
+	my_pid = getpid();
+
+	error = cosetup(COSETUP_COACCEPT);
+	if (error != 0)
+		cheribsdtest_failure_err("cosetup");
+
+	error = coregister(ctp->ct_name, NULL);
+	if (error != 0)
+		cheribsdtest_failure_err("coregister");
+
+	fork_pid = fork();
+	if (fork_pid == -1)
+		cheribsdtest_failure_err("Fork failed");
+
+	if (fork_pid == 0) {
+		cheribsdtest_coexec_child(ctp);
+	} else {
+		int res;
+
+		error = coaccept_slow(NULL, &my_pid, sizeof(my_pid),
+		    &recvd_pid, sizeof(recvd_pid));
+		if (error != 0)
+			cheribsdtest_failure_err("coaccept");
+
+		CHERIBSDTEST_VERIFY2(fork_pid == recvd_pid,
+		    "fork_pid %d != recvd_pid %d", fork_pid, recvd_pid);
+
+		error = cogetpid(&caller_pid);
+		if (error != 0)
+			cheribsdtest_failure_err("cogetpid");
+		CHERIBSDTEST_VERIFY2(fork_pid == caller_pid,
+		    "fork_pid %d != cogetpid(cookie) %d", fork_pid,
+		    caller_pid);
+
+		waitpid(fork_pid, &res, 0);
+		if (res == 0) {
+			cheribsdtest_success();
+		} else if (WIFEXITED(res)) {
+			cheribsdtest_failure_errx(
+			    "coexecved process exited with %d",
+			    WEXITSTATUS(res));
+		} else {
+			cheribsdtest_failure_errx(
+			    "coexecved process failed with status 0x%x", res);
+		}
+	}
+}
+
 #endif
 
 static void
