@@ -48,7 +48,7 @@ typedef int wait_queue_func_t(wait_queue_entry_t *, unsigned int, int, void *);
 struct wait_queue_entry {
 	unsigned int flags;	/* always 0 */
 	void *private;
-	atomic_t state;
+	u_int state;
 	wait_queue_func_t *func;
 	struct list_head entry;
 };
