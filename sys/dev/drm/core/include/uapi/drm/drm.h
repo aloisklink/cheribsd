@@ -517,7 +517,7 @@ struct drm_wait_vblank_request64 {
 struct drm_wait_vblank_request {
 	enum drm_vblank_seq_type type;
 	unsigned int sequence;
-	kuintcap_t signal;
+	kuint64cap_t signal;
 };
 
 struct drm_wait_vblank_reply {
@@ -791,7 +791,7 @@ struct drm_syncobj_wait64 {
 #endif
 
 struct drm_syncobj_wait {
-	kuintcap_t handles;
+	kuint64cap_t handles;
 	/* absolute timeout */
 	__s64 timeout_nsec;
 	__u32 count_handles;
@@ -815,9 +815,9 @@ struct drm_syncobj_timeline_wait64 {
 #endif
 
 struct drm_syncobj_timeline_wait {
-	kuintcap_t handles;
+	kuint64cap_t handles;
 	/* wait on specific timeline point for every handles*/
-	kuintcap_t points;
+	kuint64cap_t points;
 	/* absolute timeout */
 	__s64 timeout_nsec;
 	__u32 count_handles;
@@ -835,7 +835,7 @@ struct drm_syncobj_array64 {
 #endif
 
 struct drm_syncobj_array {
-	kuintcap_t handles;
+	kuint64cap_t handles;
 	__u32 count_handles;
 	__u32 pad;
 };
@@ -851,8 +851,8 @@ struct drm_syncobj_timeline_array64 {
 #endif
 
 struct drm_syncobj_timeline_array {
-	kuintcap_t handles;
-	kuintcap_t points;
+	kuint64cap_t handles;
+	kuint64cap_t points;
 	__u32 count_handles;
 	__u32 flags;
 };
@@ -885,7 +885,7 @@ struct drm_crtc_queue_sequence {
 	__u32 crtc_id;
 	__u32 flags;
 	__u64 sequence;		/* on input, target sequence. on output, actual sequence */
-	kuintcap_t user_data;	/* user data passed to event */
+	kuint64cap_t user_data;	/* user data passed to event */
 };
 
 #if defined(__cplusplus)
@@ -1074,7 +1074,7 @@ struct drm_event_vblank64 {
 
 struct drm_event_vblank {
 	struct drm_event base;
-	kuintcap_t user_data;
+	kuint64cap_t user_data;
 	__u32 tv_sec;
 	__u32 tv_usec;
 	__u32 sequence;
@@ -1095,7 +1095,7 @@ struct drm_event_crtc_sequence64 {
 
 struct drm_event_crtc_sequence {
 	struct drm_event	base;
-	kuintcap_t		user_data;
+	kuint64cap_t		user_data;
 	__s64			time_ns;
 	__u64			sequence;
 };
